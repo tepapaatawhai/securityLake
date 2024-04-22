@@ -6,7 +6,7 @@ import {
 
 import * as constructs from 'constructs';
 import * as environments from './environments';
-import { ExampleStack } from '../exampleStack/exampleStack';
+import { SecurityLake } from '../stacks/securityLake';
 
 export interface PipelineProps extends cdk.StackProps{
   repo: string;
@@ -43,25 +43,20 @@ export class Pipeline extends cdk.Stack {
     });
 
     pipeline.addStage(
-      new ExampleStage(this, 'dev', {
-        env: environments.dev,
+      new SecurityLakeStage(this, 'prod', {
+        env: environments.lake,
       }),
-      {
-        pre: [
-          new pipelines.ManualApprovalStep('DeploytoManagmentAccount'),
-        ],
-      },
     );
   }
 }
 
-class ExampleStage extends cdk.Stage {
+class SecurityLakeStage extends cdk.Stage {
   constructor(scope: constructs.Construct, id: string, props?: cdk.StageProps) {
     super(scope, id, props);
 
-    new ExampleStack(this, 'ExampleStack', {
-      env: environments.dev,
-      name: 'example',
+    new SecurityLake(this, 'SecurityLake', {
+      env: environments.lake,
+      name: 'securityLake'
     });
   }
 }

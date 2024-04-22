@@ -1,10 +1,11 @@
 import * as core from 'aws-cdk-lib';
-export const dev: core.Environment = {
-  account: '22222222222',
+
+export const lake: core.Environment = {
+  account: '905418030157',
   region: 'ap-southeast-2',
 };
 
 export const deploy: core.Environment = {
-  account: '111111111111',
+  account: '891377120249',
   region: 'ap-southeast-2',
 };
