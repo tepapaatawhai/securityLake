@@ -8,6 +8,8 @@ import * as constructs from 'constructs';
 import * as environments from './environments';
 import { SecurityLake } from '../stacks/securityLake';
 
+const sharingID = 'FREDFLINTSTONE';
+
 export interface PipelineProps extends cdk.StackProps{
   repo: string;
   branch: string;
@@ -56,7 +58,8 @@ class SecurityLakeStage extends cdk.Stage {
 
     new SecurityLake(this, 'SecurityLake', {
       env: environments.lake,
-      name: 'securityLake'
+      name: 'securityLake',
+      shareExternalId: sharingID // funny reference to bedrock
     });
   }
 }

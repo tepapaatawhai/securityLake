@@ -11,6 +11,11 @@ import {
 
 } from 'aws-cdk-lib'
 
+//https://boto3.amazonaws.com/v1/documentation/api/1.26.92/reference/services/lakeformation/client/grant_permissions.html
+export enum DatalakePermissions {
+  ALL = 'ALL',
+}
+
 export enum AwsSource {
   ROUTE_53 = 'ROUTE53',
   VPC_FLOW = 'VPC_FLOW',
@@ -46,16 +51,34 @@ export interface Transistion {
   class: SecurityLakeStorageClass,
 }
 
+
+
+export enum AccessType {
+  LAKEFORMATION = 'LAKEFORMATION',
+  S3 = 'S3',
+}
+
+// need to add custom Sources to this. 
+export interface AddSubscriber {
+  accessTypes: AccessType[]
+  awsLogSources: AwsLogSource[],
+  identity: securityLake.CfnSubscriber.SubscriberIdentityProperty,
+}
+
 export interface SecurityLakeProps extends core.StackProps {
   key: kms.IKey
   lifecycle: string
+  /**
+   * @default: hnb659fds
+   */
+  cdkQualifier?: string | undefined
 }
 
 export class SecurityLake extends constructs.Construct {
 
-  arn: string
-  //bucket: s3.IBucket
-
+  arn: string;
+  complete: core.CustomResource;
+  
   constructor(scope: constructs.Construct, id: string, props: SecurityLakeProps) {
     super(scope, id);
 
@@ -79,25 +102,25 @@ export class SecurityLake extends constructs.Construct {
       handler: 'security_lake.on_event'
     });
 
-    securityLakeEvent.addToRolePolicy(new iam.PolicyStatement({
+    //https://docs.aws.amazon.com/security-lake/latest/userguide/security-iam-awsmanpol.html#security-iam-awsmanpol-AmazonSecurityLakeAdministrator
+    securityLakeEvent.role?.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSecurityLakeAdministrator'),
+    );
+
+    securityLakeEvent.role?.addToPrincipalPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
-        'securitylake:*',
-        'iam:PassRole',
-        'iam:ListAttachedRolePolicies',
-        's3:*',
-        'lambda:*',
-        'sqs:*',
-        'events:*',
-        'lakeformation:*',
-        '*', // THIS IS OVERPROVISIONED, BUT ITS NOT CLEAR WHAT PERMISSIONS THIS NEEDS!,  'eventId: 1f33d582-0448-44e1-b908-9864ea343972'
-        /**
-         * message": "To perform this operation, your account must be a delegated Security Lake administrator account or a standalone Security Lake account."
-         */
-       ],
-      resources: ['*']
-    }))
+        'lakeformation:PutDatalakeSettings',
+      ],
+      resources: ['*'],
+      conditions: {
+        'ForAnyValue:StringEquals': {
+          'aws:CalledVia': 'securitylake.amazonaws.com',
+        },
+      },
+    }));
 
+    
     securityLakeEvent.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
@@ -107,6 +130,14 @@ export class SecurityLake extends constructs.Construct {
         "kms:Decrypt",
        ],
       resources: [props.key.keyArn]
+    }))
+
+    securityLakeEvent.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "iam:PassRole",
+       ],
+      resources: ['*']
     }))
 
     const securityLakeIsComplete = new lambda.Function(this, 'IsCompleteLambda', {
@@ -139,16 +170,21 @@ export class SecurityLake extends constructs.Construct {
         encryptionConfiguration: encryptionConfig,
         lifecycleConfiguration: props.lifecycle,
         region: core.Aws.REGION,
-        metaStoreManagerRoleArn: metaStoreRole.roleArn
+        account: core.Aws.ACCOUNT_ID,
+        cdkRoleArn: `arn:${core.Aws.PARTITION}:iam::${core.Aws.ACCOUNT_ID}:role/cdk-${props.cdkQualifier ?? 'hnb659fds'}-cfn-exec-role-${core.Aws.ACCOUNT_ID}-${core.Aws.REGION}`,
+        metaStoreManagerRoleArn: metaStoreRole.roleArn,
+        databaseName:  `amazon_security_lake_glue_db_${core.Aws.REGION}`
       }
     })
 
-   
+
+    
+  
+    this.complete = securityLake,
     this.arn = securityLake.getAttString('Arn')
     //this.bucket = s3.Bucket.fromBucketArn(this, 'lakebucket', securityLake.getAttString('BucketArn'));
 
   }
-
 
 
   public addAwsSource(props: AddAwsSourceProps): void {
@@ -171,6 +207,9 @@ export class SecurityLake extends constructs.Construct {
         accounts: accounts
       });
 
+      // make nextsource dependent on this.complete
+      nextsource.node.addDependency(this.complete)
+
       // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-securitylake-awslogsource.html#aws-resource-securitylake-awslogsource--examples
       // f you want to create multiple sources using AWS::SecurityLake::AwsLogSource, you must use the DependsOn attribute to create the sources sequentially. With the DependsOn attribute you can specify that the creation of a specific AWSLogSourcefollows another. When you add a DependsOn attribute to a resource, that resource is created only after the creation of the resource specified in the DependsOn attribute. For an example, see Add AWS log sources.
       if (lastSource) {
@@ -182,4 +221,28 @@ export class SecurityLake extends constructs.Construct {
     })
   } 
 
+  public addSubscriber(name: string, description: string, props: AddSubscriber): string {
+
+    
+    const cfnSubscriber = new securityLake.CfnSubscriber(this, 'MyCfnSubscriber', {
+      accessTypes: props.accessTypes,
+      dataLakeArn: this.arn,
+      sources: props.awsLogSources.map((source) => {
+        return {
+          awsLogSource: {
+            sourceName: source.source,
+            sourceVersion: source.sourceVersion ?? '2.0'
+          }
+        }
+      }),
+      subscriberIdentity: props.identity,
+      subscriberName: name,
+      subscriberDescription: description,
+
+    });
+
+    return cfnSubscriber.attrResourceShareArn
+  }
+
 }
+

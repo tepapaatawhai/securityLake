@@ -9,3 +9,8 @@ export const deploy: core.Environment = {
   account: '891377120249',
   region: 'ap-southeast-2',
 };
+
+export const analyst: core.Environment = {
+  account: '381491951558',
+  region: 'ap-southeast-2',
+};

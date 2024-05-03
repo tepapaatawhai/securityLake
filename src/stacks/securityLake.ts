@@ -2,14 +2,16 @@ import * as core from 'aws-cdk-lib';
 import * as constructs from 'constructs';
 
 import {
-  aws_kms as kms
+  aws_kms as kms,
 } from 'aws-cdk-lib'
 
 import * as securityLake from '../localconstructs/securityLake'
+import * as environments from '../pipeline/environments'
 
 
 export interface SecurityLakeProps extends core.StackProps {
   name: string;
+  shareExternalId: string;
 }
 
 export class SecurityLake extends core.Stack {
@@ -57,12 +59,26 @@ export class SecurityLake extends core.Stack {
           source: securityLake.AwsSource.CLOUD_TRAIL_MGMT,
           sourceVersion: '2.0'
         },
-        {
-          source: securityLake.AwsSource.WAF,
-          sourceVersion: '2.0'
-        },
       ]
-        // securityLake.AwsSources.WAF,
     })
+
+    depconLake.addSubscriber(
+      'AIanalyst',
+      'Claude Bedrock AI Analysis of Logs',
+      {
+        accessTypes: [securityLake.AccessType.LAKEFORMATION],
+        awsLogSources: [
+          {source: securityLake.AwsSource.CLOUD_TRAIL_MGMT },
+          {source: securityLake.AwsSource.ROUTE_53 },
+          {source: securityLake.AwsSource.SECURITY_HUB },
+          {source: securityLake.AwsSource.VPC_FLOW },
+        ],
+        identity: {
+          principal: environments.analyst.account!,
+          externalId: props.shareExternalId,
+        }
+      } 
+    )
+
   }
 }
