@@ -97,7 +97,7 @@ export class SecurityLake extends constructs.Construct {
 
     const securityLakeEvent = new lambda.Function(this, 'SecurityLakeLambda', {
       runtime: lambda.Runtime.PYTHON_3_12,
-      code: lambda.Code.fromAsset(path.join(__dirname,'../../assets/lambda/securitylake/')),
+      code: lambda.Code.fromAsset(path.join(__dirname,'../../projectAssets/lambda/securitylake/')),
       timeout: core.Duration.seconds(60),
       handler: 'security_lake.on_event'
     });
@@ -142,7 +142,7 @@ export class SecurityLake extends constructs.Construct {
 
     const securityLakeIsComplete = new lambda.Function(this, 'IsCompleteLambda', {
       runtime: lambda.Runtime.PYTHON_3_12,
-      code: lambda.Code.fromAsset(path.join(__dirname,'../../assets/lambda/securitylake/')),
+      code: lambda.Code.fromAsset(path.join(__dirname,'../../projectAssets/lambda/securitylake/')),
       timeout: core.Duration.seconds(60),
       handler: 'security_lake.is_complete'
     });

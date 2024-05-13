@@ -14,7 +14,6 @@ import {
     from 'aws-cdk-lib';
 
 import * as constructs from "constructs";
-import { NagSuppressions } from 'cdk-nag';
 import * as environments from '../pipeline/environments'
 
 import * as path from 'path'
@@ -24,12 +23,13 @@ export interface SageMakerDomainProps extends core.StackProps{
   /**
    * IAM role to update the trust relationship to allow access to create and access SageMaker Studio's presigned URL
    */
-  presumptionRole: iam.IRole,
+  presumptionRole: string,
   /**
    * The IP address to limit accessing SageMaker Studio presigned URL
    * @default 0.0.0.0/0
    */
   restrictSageMakerIP?: string | undefined
+  
 }
 
 
@@ -42,7 +42,7 @@ export class SageMakerDomainStack extends core.Stack {
     const sagemaker_notebook_gen_ai_repository = new codecommit.Repository(this, 'sagemaker_notebook_gen_ai_repository', {
       repositoryName: 'sagemaker_gen_ai_repo',
       description: 'Repository for SageMaker notebooks to run analytics for Security Lake.',
-      code: codecommit.Code.fromZipFile(path.join(__dirname, "../notebooks/notebooks.zip"), "main")
+      code: codecommit.Code.fromZipFile(path.join(__dirname, "../../projectAssets/notebooks/notebooks.zip"), "main")
     });
 
     new core.CfnOutput(this,'sagemaker-notebook-gen-ai-repository-URL', {
@@ -758,7 +758,7 @@ export class SageMakerDomainStack extends core.Stack {
     // IAM Role for SageMaker user profiles
     const sagemaker_console_presigned_url_role = new iam.Role(this, "sagemaker_console_presigned_url_role", {
       assumedBy: new iam.CompositePrincipal(
-        new iam.ArnPrincipal(props.presumptionRole.roleArn)
+        new iam.ArnPrincipal(props.presumptionRole)
       ),
       roleName: "sagemaker-console-presigned-url-role",
     });
@@ -862,25 +862,5 @@ export class SageMakerDomainStack extends core.Stack {
         },
       },
     });
-
-  
-    NagSuppressions.addResourceSuppressionsByPath(this,'/SageMakerDomainStack/SageMakerStudioConsoleManagedPolicy/Resource',
-      [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'The specific actions in the SMStudioServiceCatalogReadAllow SID require * resource. The actions are all read-only.',
-        },
-      ]
-    );
-
-    NagSuppressions.addResourceSuppressionsByPath(this,'/SageMakerDomainStack/SageMakerStudioUserProfileManagedPolicy/Resource',
-      [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'The specific actions in the S3Read and LakeFormationAllow SID require * resource. The actions are all read-only.',
-        },
-      ]
-    );
-
   }
 }

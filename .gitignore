@@ -47,4 +47,5 @@ junit.xml
 /cdk.out/
 .cdk.staging/
 .parcel-cache/
+!/projectAssets/**
 !/.projenrc.ts

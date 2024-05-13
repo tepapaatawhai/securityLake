@@ -7,6 +7,7 @@ import {
 import * as constructs from 'constructs';
 import * as environments from './environments';
 import { SecurityLake } from '../stacks/securityLake';
+import { SageMakerDomainStack } from '../stacks/sagemakerDomain'
 
 const sharingID = 'FREDFLINTSTONE';
 
@@ -61,5 +62,11 @@ class SecurityLakeStage extends cdk.Stage {
       name: 'securityLake',
       shareExternalId: sharingID // funny reference to bedrock
     });
+
+    new SageMakerDomainStack(this, 'SageMakerDomain', {
+      env: environments.analyst,
+      presumptionRole: 'arn:aws:iam::381491951558:role/aws-reserved/sso.amazonaws.com/ap-southeast-2/AWSReservedSSO_ApplicationAdministrator_803b45237bd6b8b6',
+      restrictSageMakerIP: '0.0.0.0/0',
+    })
   }
-}
+};
