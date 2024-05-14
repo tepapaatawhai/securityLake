@@ -66,7 +66,7 @@ export interface AddSubscriber {
 }
 
 export interface SecurityLakeProps extends core.StackProps {
-  key: kms.IKey
+  key?: kms.IKey | undefined
   lifecycle: string
   /**
    * @default: hnb659fds
@@ -82,9 +82,10 @@ export class SecurityLake extends constructs.Construct {
   constructor(scope: constructs.Construct, id: string, props: SecurityLakeProps) {
     super(scope, id);
 
+
     let encryptionConfig: securityLake.CfnDataLake.EncryptionConfigurationProperty =  {
-      kmsKeyId: props.key.keyId
-      }
+      kmsKeyId: props.key?.keyId ?? 'S3_MANAGED_KEY'
+    }
     
     const metaStoreRole = new iam.Role(this,'MetaStoreRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com')
@@ -120,18 +121,18 @@ export class SecurityLake extends constructs.Construct {
       },
     }));
 
-    
-    securityLakeEvent.addToRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "kms:CreateGrant",
-        "kms:DescribeKey",
-        "kms:GenerateDataKey",
-        "kms:Decrypt",
-       ],
-      resources: [props.key.keyArn]
-    }))
-
+    if (props.key) {
+      securityLakeEvent.addToRolePolicy(new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "kms:CreateGrant",
+          "kms:DescribeKey",
+          "kms:GenerateDataKey",
+          "kms:Decrypt",
+        ],
+        resources: [props.key.keyArn]
+      }))
+    }
     securityLakeEvent.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
