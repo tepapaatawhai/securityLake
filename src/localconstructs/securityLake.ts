@@ -83,9 +83,25 @@ export class SecurityLake extends constructs.Construct {
     super(scope, id);
 
 
+    if (props.key) {
+      props.key.grantEncryptDecrypt(new iam.ArnPrincipal(`arn:${core.Aws.PARTITION}:iam::${core.Aws.ACCOUNT_ID}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess`))
+    }
+
+    if (props.key) {
+      props.key.grant(new iam.ArnPrincipal(`arn:${core.Aws.PARTITION}:iam::${core.Aws.ACCOUNT_ID}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess`),
+      'kms:DescribeKey'
+      )
+    }
+
+   
+
+            
+
     let encryptionConfig: securityLake.CfnDataLake.EncryptionConfigurationProperty =  {
       kmsKeyId: props.key?.keyId ?? 'S3_MANAGED_KEY'
     }
+
+
     
     const metaStoreRole = new iam.Role(this,'MetaStoreRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com')

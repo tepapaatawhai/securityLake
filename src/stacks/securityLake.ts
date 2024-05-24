@@ -1,9 +1,9 @@
 import * as core from 'aws-cdk-lib';
 import * as constructs from 'constructs';
 
-// import {
-//   aws_kms as kms,
-// } from 'aws-cdk-lib'
+import {
+  aws_kms as kms,
+} from 'aws-cdk-lib'
 
 import * as securityLake from '../localconstructs/securityLake'
 import * as environments from '../pipeline/environments'
@@ -21,9 +21,9 @@ export class SecurityLake extends core.Stack {
 
     // this will just deploy in the region that it 
     const depconLake = new securityLake.SecurityLake(this, 'securityLake', {
-      // key: new kms.Key(this, 'kms', {
-      //   description: 'Key To encrypt, securityLake'
-      // }),
+      key: new kms.Key(this, 'kms', {
+        description: 'Key To encrypt, securityLake'
+      }),
       lifecycle: JSON.stringify({
         expiration: {
           "days": 1825
